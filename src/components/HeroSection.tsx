@@ -13,7 +13,14 @@ export function HeroSection({ onExploreClick }: HeroSectionProps) {
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.muted = true;
-      videoRef.current.play().catch(() => {});
+      videoRef.current.defaultMuted = true;
+      // Force play promise handling to avoid blocking mobile browser thread
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Autoplay was prevented by mobile battery saver / low power mode
+        });
+      }
     }
   }, []);
 
@@ -47,10 +54,12 @@ export function HeroSection({ onExploreClick }: HeroSectionProps) {
         muted
         loop
         playsInline
-        preload="auto"
+        disablePictureInPicture
+        disableRemotePlayback
+        preload="metadata"
         onEnded={handleVideoEnded}
         poster="/thumbnails/empiccc-flow-fest.webp"
-        className="absolute inset-0 w-full h-full object-cover object-center scale-[1.03] transition-transform duration-1000"
+        className="absolute inset-0 w-full h-full object-cover object-center scale-[1.03] transition-transform duration-1000 pointer-events-none"
       >
         <source src="/videos/hero-loop.mp4" type="video/mp4" />
       </video>
