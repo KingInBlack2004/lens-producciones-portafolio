@@ -1,0 +1,10 @@
+services:
+  lens-portafolio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: lens-producciones:latest
+    container_name: lens-portafolio-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
