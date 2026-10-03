@@ -313,7 +313,7 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
         // Utilizes native Android OS C++ hardware media decoding (NuPlayer/Stagefright),
         // bypassing JavaScript MediaSource chunking and zero B-frames (IPPP),
         // completely eliminating bufferStalledError and dropping dropped frames to 0!
-        const mobileMp4Url = rawUrl.replace(/[^/]+\.m3u8$/, "mobile.mp4");
+        const mobileMp4Url = `${rawUrl.replace(/[^/]+\.m3u8$/, "mobile.mp4")}?v=v2_fluid`;
         const devType = "Móvil (Hardware Directo MP4)";
         const vp = typeof window !== "undefined" ? `${window.innerWidth}x${window.innerHeight}` : "";
 
