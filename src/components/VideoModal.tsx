@@ -153,7 +153,9 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
           maxBufferLength: 30,
           maxMaxBufferLength: 60,
           maxBufferSize: 60 * 1000 * 1000,
-          startLevel: -1,
+          maxBufferHole: 0.1,
+          nudgeMaxRetry: 10,
+          nudgeOffset: 0.1,
         });
         hlsRef.current = hls;
         hls.loadSource(url);
