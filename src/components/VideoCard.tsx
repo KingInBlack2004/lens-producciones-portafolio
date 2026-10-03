@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
-import Image from "next/image";
+import React, { useState } from "react";
 import { Play, Sparkles } from "lucide-react";
 import { Project } from "@/types/project";
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
@@ -17,56 +16,12 @@ export function VideoCard({
   onSelectProject,
   priority = false,
 }: VideoCardProps) {
-  const { elementRef, isVisible } = useIntersectionObserver({
+  const { elementRef } = useIntersectionObserver({
     rootMargin: "150px",
     freezeOnceVisible: true,
   });
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isHovered, setIsHovered] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [videoLoaded, setVideoLoaded] = useState(false);
-
-  // Handle pointer enter with debounce
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-    hoverTimeoutRef.current = setTimeout(() => {
-      if (videoRef.current && isVisible) {
-        videoRef.current
-          .play()
-          .then(() => {
-            setIsPlaying(true);
-          })
-          .catch(() => {
-            // Browser autoplay restrictions handled gracefully
-            setIsPlaying(false);
-          });
-      }
-    }, 100);
-  };
-
-  // Handle pointer leave
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
-      setIsPlaying(false);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const handleClick = () => {
     onSelectProject(project);
@@ -86,18 +41,14 @@ export function VideoCard({
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className="group relative flex flex-col bg-surface rounded-xl overflow-hidden border border-white/10 hover:border-white/30 transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.8)] cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400/80 focus:ring-offset-2 focus:ring-offset-background"
     >
       {/* Video / Poster Media Container (16:9 ratio) */}
       <div className="relative w-full aspect-video overflow-hidden bg-neutral-950">
-        {/* Static Poster Image */}
-        <div
-          className={`absolute inset-0 transition-opacity duration-700 ease-in-out z-10 ${
-            isPlaying ? "opacity-0 pointer-events-none" : "opacity-100"
-          }`}
-        >
+        {/* Static Poster Image with smooth hover zoom */}
+        <div className="absolute inset-0 z-10">
           <img
             src={project.thumbnailUrl}
             alt={project.title}
@@ -105,24 +56,6 @@ export function VideoCard({
             className="w-full h-full object-cover object-center transform transition-transform duration-700 ease-out group-hover:scale-105"
           />
         </div>
-
-        {/* Lazy Loaded Preview Video */}
-        {(isVisible || priority) && (
-          <video
-            ref={videoRef}
-            muted
-            loop
-            playsInline
-            preload="none"
-            poster={project.thumbnailUrl}
-            onLoadedData={() => setVideoLoaded(true)}
-            className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-500 ease-in-out ${
-              isPlaying ? "opacity-100 z-20" : "opacity-0 pointer-events-none"
-            }`}
-          >
-            <source src={project.videoUrl} type="video/mp4" />
-          </video>
-        )}
 
         {/* Ambient Dark Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 z-20 pointer-events-none" />

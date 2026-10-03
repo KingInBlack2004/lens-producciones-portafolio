@@ -83,6 +83,9 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime);
+      if (isBuffering && !videoRef.current.paused) {
+        setIsBuffering(false);
+      }
     }
   };
 
@@ -146,10 +149,11 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: false,
-          backBufferLength: 10,
-          maxBufferLength: 8,
-          maxMaxBufferLength: 16,
-          maxBufferSize: 20 * 1000 * 1000,
+          backBufferLength: 30,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          maxBufferSize: 60 * 1000 * 1000,
+          startLevel: -1,
         });
         hlsRef.current = hls;
         hls.loadSource(url);
