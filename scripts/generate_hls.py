@@ -93,6 +93,7 @@ for p in PROJECTS:
         "-preset", "fast",
         "-profile:v", "main",
         "-level", "3.1",
+        "-bf", "0",
         "-b:v", "1100k",
         "-maxrate", "1400k",
         "-bufsize", "2500k",
@@ -115,7 +116,31 @@ for p in PROJECTS:
     ]
     subprocess.run(cmd_720, cwd=out_dir, check=True)
 
-    # 3. Master playlist (index.m3u8) for standard HLS players
+    # 3. Direct FastStart MP4 for Mobile Native Media Hardware (Zero MediaSource overhead)
+    print(f"[{pid}] Encoding mobile.mp4 direct hardware stream...")
+    cmd_mobile = [
+        ffmpeg, "-y",
+        "-i", inp,
+        "-vf", f"{scale_720},fps=30",
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-profile:v", "main",
+        "-level", "3.1",
+        "-bf", "0",
+        "-b:v", "1200k",
+        "-maxrate", "1500k",
+        "-bufsize", "2500k",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-ar", "48000",
+        "-ac", "2",
+        "-movflags", "+faststart",
+        os.path.join(out_dir, "mobile.mp4")
+    ]
+    subprocess.run(cmd_mobile, check=True)
+
+    # 4. Master playlist (index.m3u8) for standard HLS players
     res_720 = "720x1280" if is_vert else "1280x720"
     res_1080 = "1080x1920" if is_vert else "1920x1080"
     master_content = f"""#EXTM3U
@@ -129,7 +154,7 @@ for p in PROJECTS:
     with open(os.path.join(out_dir, "index.m3u8"), "w", encoding="utf-8") as mf:
         mf.write(master_content)
 
-    print(f"[{pid}] Both 1080p and 720p streams + index.m3u8 created in {out_dir}!")
+    print(f"[{pid}] 1080p, 720p (bf=0), mobile.mp4, and index.m3u8 created in {out_dir}!")
 
 # Remove leftover root init.mp4 if present
 if os.path.exists("init.mp4"):
