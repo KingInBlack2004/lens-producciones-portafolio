@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import { ChevronDown, Play, VolumeX } from "lucide-react";
 
 interface HeroSectionProps {
@@ -9,6 +9,20 @@ interface HeroSectionProps {
 
 export function HeroSection({ onExploreClick }: HeroSectionProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = true;
+      videoRef.current.play().catch(() => {});
+    }
+  }, []);
+
+  const handleVideoEnded = () => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+    }
+  };
 
   const handleScrollDown = () => {
     if (onExploreClick) {
@@ -34,10 +48,11 @@ export function HeroSection({ onExploreClick }: HeroSectionProps) {
         loop
         playsInline
         preload="auto"
+        onEnded={handleVideoEnded}
         poster="/thumbnails/empiccc-flow-fest.webp"
         className="absolute inset-0 w-full h-full object-cover object-center scale-[1.03] transition-transform duration-1000"
       >
-        <source src="/videos/empiccc-flow-fest.mp4" type="video/mp4" />
+        <source src="/videos/hero-loop.mp4" type="video/mp4" />
       </video>
 
       {/* Cinematic Overlays */}

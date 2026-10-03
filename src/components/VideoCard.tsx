@@ -113,7 +113,7 @@ export function VideoCard({
             muted
             loop
             playsInline
-            preload="metadata"
+            preload="none"
             poster={project.thumbnailUrl}
             onLoadedData={() => setVideoLoaded(true)}
             className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-500 ease-in-out ${
