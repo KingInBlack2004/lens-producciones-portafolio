@@ -12,6 +12,7 @@ dist/
 # Raw master videos preserved locally
 raw_videos/
 public/videos/*.mp4
+public/videos/hls/
 
 # Debug logs
 npm-debug.log*

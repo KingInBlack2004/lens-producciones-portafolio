@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { X, Calendar, User, Clock, Film, Play, VolumeX } from "lucide-react";
+import Hls from "hls.js";
 import { Project } from "@/types/project";
 import { CustomControls } from "./CustomControls";
 
@@ -13,6 +14,7 @@ interface VideoModalProps {
 export function VideoModal({ project, onClose }: VideoModalProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
@@ -40,9 +42,14 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
 
   // Safe close handler that halts media playback instantly
   const handleClose = useCallback(() => {
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
     if (videoRef.current) {
       videoRef.current.pause();
-      videoRef.current.currentTime = 0;
+      videoRef.current.removeAttribute("src");
+      videoRef.current.load();
     }
     onClose();
   }, [onClose]);
@@ -120,6 +127,68 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
       attemptPlay();
     }
   };
+
+  // Adaptive HLS (.m3u8) stream loader with seamless fallback
+  useEffect(() => {
+    if (!project || !videoRef.current) return;
+    const video = videoRef.current;
+    const url = project.videoUrl;
+    const isHls = url.endsWith(".m3u8");
+
+    // Clean up previous instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    if (isHls) {
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: false,
+          backBufferLength: 10,
+          maxBufferLength: 8,
+          maxMaxBufferLength: 16,
+          maxBufferSize: 20 * 1000 * 1000,
+        });
+        hlsRef.current = hls;
+        hls.loadSource(url);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          attemptPlay();
+        });
+
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError();
+                break;
+              default:
+                hls.destroy();
+                break;
+            }
+          }
+        });
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        // Native HLS for Safari iOS & macOS
+        video.src = url;
+      }
+    } else {
+      video.src = url;
+    }
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [project, attemptPlay]);
 
   const togglePlayPause = () => {
     if (!videoRef.current) return;
@@ -255,7 +324,6 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
           >
             <video
               ref={videoRef}
-              src={project.videoUrl}
               playsInline
               disablePictureInPicture
               disableRemotePlayback
