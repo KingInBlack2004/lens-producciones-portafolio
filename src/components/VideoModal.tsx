@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { X, Calendar, User, Clock, Film } from "lucide-react";
+import { X, Calendar, User, Clock, Film, Play, VolumeX } from "lucide-react";
 import { Project } from "@/types/project";
 import { CustomControls } from "./CustomControls";
 
@@ -14,7 +14,9 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(true);
+  const [audioBlocked, setAudioBlocked] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
@@ -77,13 +79,42 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
     }
   };
 
+  const attemptPlay = useCallback(() => {
+    if (!videoRef.current) return;
+    setIsBuffering(true);
+    const playPromise = videoRef.current.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          setIsPlaying(true);
+          setIsBuffering(false);
+          setAudioBlocked(false);
+        })
+        .catch(() => {
+          // Mobile autoplay policy blocked unmuted playback -> Fallback to muted playback
+          if (videoRef.current) {
+            videoRef.current.muted = true;
+            setIsMuted(true);
+            setAudioBlocked(true);
+            videoRef.current
+              .play()
+              .then(() => {
+                setIsPlaying(true);
+                setIsBuffering(false);
+              })
+              .catch(() => {
+                setIsPlaying(false);
+                setIsBuffering(false);
+              });
+          }
+        });
+    }
+  }, []);
+
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
       setDuration(videoRef.current.duration);
-      videoRef.current
-        .play()
-        .then(() => setIsPlaying(true))
-        .catch(() => setIsPlaying(false));
+      attemptPlay();
     }
   };
 
@@ -93,8 +124,12 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
       videoRef.current.pause();
       setIsPlaying(false);
     } else {
-      videoRef.current.play();
-      setIsPlaying(true);
+      if (audioBlocked) {
+        videoRef.current.muted = false;
+        setIsMuted(false);
+        setAudioBlocked(false);
+      }
+      attemptPlay();
     }
   };
 
@@ -218,15 +253,60 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
             <video
               ref={videoRef}
               playsInline
-              preload="auto"
+              disablePictureInPicture
+              disableRemotePlayback
+              preload="metadata"
               poster={project.thumbnailUrl}
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
+              onWaiting={() => setIsBuffering(true)}
+              onPlaying={() => setIsBuffering(false)}
+              onCanPlay={() => setIsBuffering(false)}
+              onSeeking={() => setIsBuffering(true)}
+              onSeeked={() => setIsBuffering(false)}
               onClick={togglePlayPause}
               className="w-full h-full object-contain cursor-pointer"
             >
               <source src={project.videoUrl} type="video/mp4" />
             </video>
+
+            {/* Audio Blocked Toast for Mobile Autoplay */}
+            {audioBlocked && isPlaying && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (videoRef.current) {
+                    videoRef.current.muted = false;
+                    setIsMuted(false);
+                    setAudioBlocked(false);
+                  }
+                }}
+                className="absolute top-4 left-4 z-40 flex items-center gap-2 px-3.5 py-2 rounded-full bg-black/85 backdrop-blur-md border border-amber-400/60 text-xs font-semibold text-white shadow-2xl animate-pulse cursor-pointer"
+              >
+                <VolumeX className="w-4 h-4 text-amber-400" />
+                <span>Toca para activar audio</span>
+              </button>
+            )}
+
+            {/* Big Center Play Button when paused and not buffering */}
+            {!isPlaying && !isBuffering && (
+              <button
+                onClick={togglePlayPause}
+                aria-label="Reproducir video"
+                className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-[2px] transition-all cursor-pointer group/center"
+              >
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center transform transition-transform group-hover/center:scale-110 shadow-2xl">
+                  <Play className="w-8 h-8 sm:w-10 sm:h-10 text-white fill-white translate-x-0.5" />
+                </div>
+              </button>
+            )}
+
+            {/* Buffering Spinner */}
+            {isBuffering && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-[1px] pointer-events-none">
+                <div className="w-12 h-12 rounded-full border-2 border-white/20 border-t-amber-400 animate-spin" />
+              </div>
+            )}
 
             {/* Custom Video Controls bar with auto-hide fade */}
             <div
