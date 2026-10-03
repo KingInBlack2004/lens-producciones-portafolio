@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LensPortfolioProjectsSchema",
+  "description": "Esquema formal de validación para el archivo de datos local src/data/projects.json",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "title", "category", "description", "videoUrl", "thumbnailUrl", "featured"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+        "description": "Identificador kebab-case único del proyecto"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 100,
+        "description": "Título formal de la obra audiovisual"
+      },
+      "category": {
+        "type": "string",
+        "enum": ["Comercial", "Automotriz", "Evento", "Narrativo", "Documental"],
+        "description": "Categoría cinematográfica para clasificación"
+      },
+      "description": {
+        "type": "string",
+        "minLength": 10,
+        "maxLength": 1000,
+        "description": "Descripción del concepto, cliente o narrativa"
+      },
+      "videoUrl": {
+        "type": "string",
+        "pattern": "^/videos/.+\\.(mp4|webm)$",
+        "description": "Ruta relativa pública al archivo de video"
+      },
+      "thumbnailUrl": {
+        "type": "string",
+        "pattern": "^/thumbnails/.+\\.(webp|jpg|jpeg|png)$",
+        "description": "Ruta relativa pública a la imagen de poster estática"
+      },
+      "featured": {
+        "type": "boolean",
+        "description": "Indica si el proyecto goza de visibilidad prioritaria"
+      },
+      "metadata": {
+        "type": "object",
+        "properties": {
+          "year": { "type": "string" },
+          "client": { "type": "string" },
+          "role": { "type": "string" },
+          "duration": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

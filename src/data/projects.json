@@ -1,0 +1,92 @@
+[
+  {
+    "id": "audi-gt-velocity",
+    "title": "Audi RS e-tron GT // Velocity",
+    "category": "Automotriz",
+    "description": "Campaña cinematográfica de lanzamiento para el Audi RS e-tron GT. Rodado en localizaciones desérticas y circuito nocturno con cámaras RED V-Raptor y lentes anamórficas Atlas Orion.",
+    "videoUrl": "/videos/automotive-audi.mp4",
+    "thumbnailUrl": "/thumbnails/automotive-audi.webp",
+    "featured": true,
+    "metadata": {
+      "year": "2025",
+      "client": "Audi Latinoamérica",
+      "role": "Director & DP",
+      "duration": "01:15"
+    }
+  },
+  {
+    "id": "lumina-fragrance",
+    "title": "LÚMINA // Eau de Parfum",
+    "category": "Comercial",
+    "description": "Comercial conceptual de alta costura enfocado en texturas orgánicas, macro cinematografía y juegos de luces difusas en claroscuro. Post-producción y gradación de color en DaVinci Resolve.",
+    "videoUrl": "/videos/commercial-lumina.mp4",
+    "thumbnailUrl": "/thumbnails/commercial-lumina.webp",
+    "featured": true,
+    "metadata": {
+      "year": "2024",
+      "client": "Maison Lúmina Paris",
+      "role": "Director & Colorist",
+      "duration": "00:45"
+    }
+  },
+  {
+    "id": "soundwave-festival-2025",
+    "title": "Soundwave Festival // Aftermovie Oficial",
+    "category": "Evento",
+    "description": "Cobertura multicámara a gran escala del festival de música electrónica Soundwave. Más de 40,000 asistentes capturados con drones FPV, cámaras Sony FX6 y gimbal Ronin 4D.",
+    "videoUrl": "/videos/event-soundwave.mp4",
+    "thumbnailUrl": "/thumbnails/event-soundwave.webp",
+    "featured": false,
+    "metadata": {
+      "year": "2025",
+      "client": "Soundwave Live",
+      "role": "Lead DP & Editor",
+      "duration": "02:30"
+    }
+  },
+  {
+    "id": "porsche-night-run",
+    "title": "Porsche 911 GT3 // Midnight Shibuya",
+    "category": "Automotriz",
+    "description": "Una exploración visual de la cultura automotriz nocturna de Tokio. Tomas dinámicas car-to-car a alta velocidad iluminadas exclusivamente por los neones de la metrópoli.",
+    "videoUrl": "/videos/automotive-porsche.mp4",
+    "thumbnailUrl": "/thumbnails/automotive-porsche.webp",
+    "featured": true,
+    "metadata": {
+      "year": "2024",
+      "client": "Porsche Club Japan",
+      "role": "Director",
+      "duration": "01:40"
+    }
+  },
+  {
+    "id": "silence-of-the-fjords",
+    "title": "El Silencio de los Fiordos",
+    "category": "Documental",
+    "description": "Cortometraje documental rodado en las costas gélidas de Noruega sobre la preservación de los cetáceos árticos. Grabado con iluminación natural y sonido directo ambisónico 3D.",
+    "videoUrl": "/videos/documentary-fjords.mp4",
+    "thumbnailUrl": "/thumbnails/documentary-fjords.webp",
+    "featured": false,
+    "metadata": {
+      "year": "2024",
+      "client": "Nordic Wildlife Fund",
+      "role": "Director & Cinematographer",
+      "duration": "04:12"
+    }
+  },
+  {
+    "id": "zenith-chronograph",
+    "title": "Zenith Chronomaster // Time in Motion",
+    "category": "Comercial",
+    "description": "Pieza publicitaria de precisión para la casa relojera suiza Zenith. Animaciones de ingeniería de precisión, tomas a 120fps de movimientos mecánicos y sincronización rítmica.",
+    "videoUrl": "/videos/commercial-zenith.mp4",
+    "thumbnailUrl": "/thumbnails/commercial-zenith.webp",
+    "featured": false,
+    "metadata": {
+      "year": "2025",
+      "client": "Zenith Watches",
+      "role": "Director de Fotografía",
+      "duration": "00:55"
+    }
+  }
+]
