@@ -25,11 +25,10 @@ export function Navbar() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-40 transition-all duration-500 ${
-        scrolled
+      className={`fixed top-0 left-0 right-0 z-40 transition-all duration-500 ${scrolled
           ? "bg-black/80 backdrop-blur-xl border-b border-white/10 py-3 shadow-2xl"
           : "bg-gradient-to-b from-black/80 via-black/30 to-transparent py-5"
-      }`}
+        }`}
     >
       <div className="max-w-7xl mx-auto px-6 sm:px-8 flex items-center justify-between">
         {/* Brand / Logo */}
@@ -75,22 +74,13 @@ export function Navbar() {
         {/* Social / Action */}
         <div className="hidden md:flex items-center gap-4">
           <a
-            href="https://instagram.com"
+            href="https://www.instagram.com/lensproducciones593?utm_source=ig_web_button_share_sheet&stkn=ZDNlZDc0MzIxNw=="
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Instagram Lens Producciones"
             className="p-2 text-neutral-400 hover:text-white transition-colors hover:scale-110"
           >
             <Instagram className="w-4 h-4" />
-          </a>
-          <a
-            href="https://youtube.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="YouTube Lens Producciones"
-            className="p-2 text-neutral-400 hover:text-white transition-colors hover:scale-110"
-          >
-            <Youtube className="w-4 h-4" />
           </a>
           <button
             onClick={() => scrollToSection("contact")}

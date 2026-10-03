@@ -19,9 +19,9 @@ export function Footer() {
               </span>
             </div>
             <p className="text-sm font-light text-neutral-400 max-w-md leading-relaxed">
-              Casa productora audiovisual especializada en cobertura de eventos en vivo,
-              festivales de música y piezas visuales de alta energía.
-              Desarrollamos cada proyecto desde la conceptualización técnica hasta la gradación final de color.
+              Casa productora audiovisual dedicada a la creación de comerciales,
+              cinematografía automotriz y piezas documentales de alta fidelidad.
+              Desarrollamos cada proyecto desde la conceptualización hasta la gradación final de color.
             </p>
             <div className="flex items-center gap-4 mt-2">
               <a
@@ -44,19 +44,19 @@ export function Footer() {
             <div className="flex items-center gap-3 text-xs">
               <Mail className="w-4 h-4 text-amber-400 flex-shrink-0" />
               <a
-                href="mailto:[EMAIL_ADDRESS]"
+                href="mailto:josuegiorgio4512@gmail.com"
                 className="hover:text-white transition-colors"
               >
-                [EMAIL_ADDRESS]
+                josuegiorgio4512@gmail.com
               </a>
             </div>
             <div className="flex items-center gap-3 text-xs">
               <Phone className="w-4 h-4 text-amber-400 flex-shrink-0" />
-              <span>+52 (55) 8432-9100</span>
+              <span>+593 99-020-4444</span>
             </div>
             <div className="flex items-center gap-3 text-xs">
               <MapPin className="w-4 h-4 text-amber-400 flex-shrink-0" />
-              <span>Ciudad de México // Madrid</span>
+              <span>Quito - Ecuador</span>
             </div>
           </div>
 
@@ -66,7 +66,7 @@ export function Footer() {
               Flujo Técnico
             </h4>
             <p className="text-xs leading-relaxed text-neutral-400 font-light">
-              Producción en 8K RAW (RED / ARRI), ópticas anamórficas de cine, estabilización Ronin 4D y corrección de color en DaVinci Resolve Studio.
+              Producción en 4K RAW (RED / ARRI)  y corrección de color en DaVinci Resolve Studio.
             </p>
             <div className="inline-block mt-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-900 border border-white/10 text-[10px] font-mono text-neutral-300">
