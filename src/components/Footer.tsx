@@ -25,22 +25,13 @@ export function Footer() {
             </p>
             <div className="flex items-center gap-4 mt-2">
               <a
-                href="https://instagram.com"
+                href="https://www.instagram.com/lensproducciones593?utm_source=ig_web_button_share_sheet&stkn=ZDNlZDc0MzIxNw=="
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Instagram"
                 className="w-9 h-9 rounded-full bg-neutral-900 border border-white/10 flex items-center justify-center hover:text-white hover:border-white/30 transition-colors"
               >
                 <Instagram className="w-4 h-4" />
-              </a>
-              <a
-                href="https://youtube.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="YouTube"
-                className="w-9 h-9 rounded-full bg-neutral-900 border border-white/10 flex items-center justify-center hover:text-white hover:border-white/30 transition-colors"
-              >
-                <Youtube className="w-4 h-4" />
               </a>
             </div>
           </div>
@@ -53,10 +44,10 @@ export function Footer() {
             <div className="flex items-center gap-3 text-xs">
               <Mail className="w-4 h-4 text-amber-400 flex-shrink-0" />
               <a
-                href="mailto:contacto@lensproducciones.com"
+                href="mailto:[EMAIL_ADDRESS]"
                 className="hover:text-white transition-colors"
               >
-                contacto@lensproducciones.com
+                [EMAIL_ADDRESS]
               </a>
             </div>
             <div className="flex items-center gap-3 text-xs">

@@ -57,7 +57,7 @@ export function CustomControls({
   };
 
   return (
-    <div className="w-full flex flex-col gap-2 p-4 bg-gradient-to-t from-black/95 via-black/80 to-transparent backdrop-blur-md rounded-b-2xl border-t border-white/10 transition-opacity duration-300">
+    <div className="w-full flex flex-col gap-1.5 px-4 sm:px-6 py-3 bg-gradient-to-t from-black/85 via-black/40 to-transparent backdrop-blur-sm transition-opacity duration-300">
       {/* Timeline Scrubber */}
       <div className="relative group/timeline w-full flex items-center">
         <input

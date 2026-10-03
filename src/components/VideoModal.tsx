@@ -20,6 +20,21 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-hide controls when user is inactive during playback
+  const handleUserActivity = useCallback(() => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    if (isPlaying) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 2500);
+    }
+  }, [isPlaying]);
 
   // Safe close handler that halts media playback instantly
   const handleClose = useCallback(() => {
@@ -128,6 +143,22 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
     }
   };
 
+  useEffect(() => {
+    if (isPlaying) {
+      handleUserActivity();
+    } else {
+      setShowControls(true);
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    }
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, [isPlaying, handleUserActivity]);
+
   if (!project) return null;
 
   return (
@@ -146,7 +177,11 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
         className="relative w-full max-w-6xl max-h-[92vh] flex flex-col bg-neutral-950 border border-white/15 rounded-2xl shadow-2xl overflow-hidden focus:outline-none"
       >
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-neutral-900/60 backdrop-blur-md z-30">
+        <div
+          className={`flex items-center justify-between px-6 py-4 border-b border-white/10 bg-neutral-900/60 backdrop-blur-md z-30 transition-opacity duration-500 ${
+            showControls || !isPlaying ? "opacity-100" : "opacity-40 hover:opacity-100"
+          }`}
+        >
           <div className="flex items-center gap-3">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
             <span className="text-xs font-mono tracking-widest uppercase text-neutral-400">
@@ -167,7 +202,19 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
         {/* Scrollable Body: Video on Top + Ficha descriptiva abajo */}
         <div className="overflow-y-auto flex-grow flex flex-col">
           {/* Main Video Player Frame (adapts to 16:9 landscape and 9:16 vertical) */}
-          <div className="relative w-full h-[55vh] sm:h-[68vh] md:h-[75vh] max-h-[750px] bg-black flex items-center justify-center group/player overflow-hidden">
+          <div
+            onMouseMove={handleUserActivity}
+            onMouseEnter={handleUserActivity}
+            onMouseLeave={() => {
+              if (isPlaying) {
+                setShowControls(false);
+              }
+            }}
+            onTouchStart={handleUserActivity}
+            className={`relative w-full h-[55vh] sm:h-[68vh] md:h-[75vh] max-h-[750px] bg-black flex items-center justify-center group/player overflow-hidden select-none ${
+              !showControls && isPlaying ? "cursor-none" : "cursor-default"
+            }`}
+          >
             <video
               ref={videoRef}
               playsInline
@@ -181,8 +228,20 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
               <source src={project.videoUrl} type="video/mp4" />
             </video>
 
-            {/* Custom Video Controls bar */}
-            <div className="absolute bottom-0 left-0 right-0 z-30">
+            {/* Custom Video Controls bar with auto-hide fade */}
+            <div
+              className={`absolute bottom-0 left-0 right-0 z-30 transition-all duration-500 ease-in-out ${
+                showControls || !isPlaying
+                  ? "opacity-100 translate-y-0 pointer-events-auto"
+                  : "opacity-0 translate-y-4 pointer-events-none"
+              }`}
+              onMouseEnter={() => {
+                if (controlsTimeoutRef.current) {
+                  clearTimeout(controlsTimeoutRef.current);
+                }
+                setShowControls(true);
+              }}
+            >
               <CustomControls
                 isPlaying={isPlaying}
                 currentTime={currentTime}
