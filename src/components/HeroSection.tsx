@@ -90,7 +90,7 @@ export function HeroSection({ onExploreClick, isPaused = false }: HeroSectionPro
         poster="/thumbnails/empiccc-flow-fest.webp"
         className="absolute inset-0 w-full h-full object-cover object-center scale-[1.03] transition-transform duration-1000 pointer-events-none"
       >
-        <source src="/videos/hero-loop-v2.mp4" type="video/mp4" />
+        <source src="/videos/hero-loop-v3.mp4" type="video/mp4" />
       </video>
 
       {/* Cinematic Overlays */}
