@@ -26,6 +26,23 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const bufferTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleWaiting = useCallback(() => {
+    if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current);
+    bufferTimeoutRef.current = setTimeout(() => {
+      setIsBuffering(true);
+    }, 200);
+  }, []);
+
+  const handlePlaying = useCallback(() => {
+    if (bufferTimeoutRef.current) {
+      clearTimeout(bufferTimeoutRef.current);
+      bufferTimeoutRef.current = null;
+    }
+    setIsPlaying(true);
+    setIsBuffering(false);
+  }, []);
 
   // Auto-hide controls when user is inactive during playback
   const handleUserActivity = useCallback(() => {
@@ -42,6 +59,10 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
 
   // Safe close handler that halts media playback instantly
   const handleClose = useCallback(() => {
+    if (bufferTimeoutRef.current) {
+      clearTimeout(bufferTimeoutRef.current);
+      bufferTimeoutRef.current = null;
+    }
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
@@ -164,12 +185,14 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
           enableWorker: true,
           lowLatencyMode: false,
           backBufferLength: 30,
-          maxBufferLength: 30,
-          maxMaxBufferLength: 60,
+          maxBufferLength: 60,
+          maxMaxBufferLength: 120,
           maxBufferSize: 60 * 1000 * 1000,
-          maxBufferHole: 0.1,
-          nudgeMaxRetry: 10,
+          maxBufferHole: 0.5,
+          highBufferWatchdogPeriod: 2,
+          nudgeMaxRetry: 5,
           nudgeOffset: 0.1,
+          startFragPrefetch: true,
         });
         hlsRef.current = hls;
         hls.loadSource(streamUrl);
@@ -351,22 +374,33 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
               poster={project.thumbnailUrl}
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
-              onWaiting={() => {
-                if (isPlaying) setIsBuffering(true);
-              }}
-              onPlaying={() => {
-                setIsPlaying(true);
-                setIsBuffering(false);
-              }}
+              onWaiting={handleWaiting}
+              onPlaying={handlePlaying}
               onPause={() => {
+                if (bufferTimeoutRef.current) {
+                  clearTimeout(bufferTimeoutRef.current);
+                  bufferTimeoutRef.current = null;
+                }
                 setIsPlaying(false);
                 setIsBuffering(false);
               }}
-              onCanPlay={() => setIsBuffering(false)}
-              onSeeking={() => {
-                if (isPlaying) setIsBuffering(true);
+              onCanPlay={() => {
+                if (bufferTimeoutRef.current) {
+                  clearTimeout(bufferTimeoutRef.current);
+                  bufferTimeoutRef.current = null;
+                }
+                setIsBuffering(false);
               }}
-              onSeeked={() => setIsBuffering(false)}
+              onSeeking={() => {
+                if (isPlaying) handleWaiting();
+              }}
+              onSeeked={() => {
+                if (bufferTimeoutRef.current) {
+                  clearTimeout(bufferTimeoutRef.current);
+                  bufferTimeoutRef.current = null;
+                }
+                setIsBuffering(false);
+              }}
               onClick={togglePlayPause}
               className="w-full h-full object-contain cursor-pointer"
             />
