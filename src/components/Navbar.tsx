@@ -65,12 +65,6 @@ export function Navbar() {
             SHOWREEL
           </button>
           <button
-            onClick={() => scrollToSection("about")}
-            className="hover:text-white transition-colors focus:outline-none"
-          >
-            ESTUDIO
-          </button>
-          <button
             onClick={() => scrollToSection("contact")}
             className="hover:text-white transition-colors focus:outline-none"
           >
@@ -130,12 +124,6 @@ export function Navbar() {
             className="text-base font-semibold tracking-widest text-neutral-300 hover:text-white py-2"
           >
             SHOWREEL
-          </button>
-          <button
-            onClick={() => scrollToSection("about")}
-            className="text-base font-semibold tracking-widest text-neutral-300 hover:text-white py-2"
-          >
-            ESTUDIO
           </button>
           <button
             onClick={() => scrollToSection("contact")}
