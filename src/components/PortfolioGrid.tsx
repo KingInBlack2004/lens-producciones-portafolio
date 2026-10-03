@@ -58,7 +58,7 @@ export function PortfolioGrid({
         </h2>
 
         <p className="mt-4 text-sm sm:text-base text-neutral-400 max-w-xl font-light">
-          Una muestra de piezas comerciales, automotrices y narrativas dirigidas con rigor visual, iluminación natural y lentes de cine.
+          Registro audiovisual en directo, aftermovies y cobertura de eventos dirigida con rigor cinematográfico y lentes de cine.
         </p>
 
         {/* Category Filters */}

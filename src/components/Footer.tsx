@@ -19,9 +19,9 @@ export function Footer() {
               </span>
             </div>
             <p className="text-sm font-light text-neutral-400 max-w-md leading-relaxed">
-              Casa productora audiovisual dedicada a la creación de comerciales,
-              cinematografía automotriz y piezas documentales de alta fidelidad.
-              Desarrollamos cada proyecto desde la conceptualización hasta la gradación final de color.
+              Casa productora audiovisual especializada en cobertura de eventos en vivo,
+              festivales de música y piezas visuales de alta energía.
+              Desarrollamos cada proyecto desde la conceptualización técnica hasta la gradación final de color.
             </p>
             <div className="flex items-center gap-4 mt-2">
               <a

@@ -66,8 +66,8 @@ export function HeroSection({ onExploreClick }: HeroSectionProps) {
 
         {/* Narrative Tagline */}
         <p className="mt-6 text-base sm:text-lg md:text-xl text-neutral-300 max-w-2xl font-light tracking-wide leading-relaxed drop-shadow-md">
-          Historias visuales de alta fidelidad. Especialistas en cine comercial,
-          narrativa automotriz y piezas documentales de escala internacional.
+          Historias visuales de alta fidelidad. Cobertura cinematográfica en vivo,
+          festivales de música, videoclips y piezas visuales de alta energía.
         </p>
 
         {/* CTAs */}
