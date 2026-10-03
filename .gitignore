@@ -9,6 +9,12 @@ out/
 build/
 dist/
 
+# Large local video files exceeding GitHub 100MB limit
+public/videos/*Flow*
+public/videos/*Project*
+public/videos/empiccc-flow-fest.mp4
+public/videos/llibo-la-melanina.mp4
+
 # Debug logs
 npm-debug.log*
 yarn-debug.log*

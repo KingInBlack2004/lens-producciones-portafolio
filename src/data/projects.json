@@ -1,7 +1,7 @@
 [
   {
     "id": "es-no-amar",
-    "title": "ES NO AMAR // Live Performance & Visual",
+    "title": "Empicccccc // Live Performance & Visual",
     "category": "Evento",
     "description": "Registro audiovisual en directo y pieza musical de 'Es No Amar'. Grabado con iluminación escénica nocturna, interacción con el público y dinámica de cámara en mano de alta energía.",
     "videoUrl": "/videos/VID_20260725_121258_440.mp4",
@@ -9,9 +9,39 @@
     "featured": true,
     "metadata": {
       "year": "2026",
-      "client": "Es No Amar // Live Concert",
+      "client": "Empicccccc",
       "role": "Director & DP",
       "duration": "01:00"
+    }
+  },
+  {
+    "id": "empiccc-flow-fest",
+    "title": "Empiccc Flow Fest // Live Concert Aftermovie",
+    "category": "Evento",
+    "description": "Cobertura cinematográfica en directo del festival Empiccc Flow Fest. Captura de la energía multitudinaria del público, juegos de luces de escenario y tomas dinámicas en tarima a 50 cuadros por segundo.",
+    "videoUrl": "/videos/empiccc-flow-fest.mp4",
+    "thumbnailUrl": "/thumbnails/empiccc-flow-fest.webp",
+    "featured": true,
+    "metadata": {
+      "year": "2026",
+      "client": "Empiccc Flow Fest",
+      "role": "Director & Lead Camera",
+      "duration": "02:49"
+    }
+  },
+  {
+    "id": "llibo-la-melanina",
+    "title": "Llibo La Melanina // Backstage & Entrevista Exclusiva",
+    "category": "Evento",
+    "description": "Encuentro y cobertura especial tras bastidores con el artista invitado Llibo La Melanina durante el festival. Formato vertical adaptado para consumo cinematográfico en plataformas digitales.",
+    "videoUrl": "/videos/llibo-la-melanina.mp4",
+    "thumbnailUrl": "/thumbnails/video-project.webp",
+    "featured": true,
+    "metadata": {
+      "year": "2026",
+      "client": "Flow Fest Media",
+      "role": "Director & DP",
+      "duration": "02:08"
     }
   },
   {
@@ -42,21 +72,6 @@
       "client": "Maison Lúmina Paris",
       "role": "Director & Colorist",
       "duration": "00:45"
-    }
-  },
-  {
-    "id": "soundwave-festival-2025",
-    "title": "Soundwave Festival // Aftermovie Oficial",
-    "category": "Evento",
-    "description": "Cobertura multicámara a gran escala del festival de música electrónica Soundwave. Más de 40,000 asistentes capturados con drones FPV, cámaras Sony FX6 y gimbal Ronin 4D.",
-    "videoUrl": "/videos/event-soundwave.mp4",
-    "thumbnailUrl": "/thumbnails/event-soundwave.webp",
-    "featured": false,
-    "metadata": {
-      "year": "2025",
-      "client": "Soundwave Live",
-      "role": "Lead DP & Editor",
-      "duration": "02:30"
     }
   },
   {
