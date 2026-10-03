@@ -66,6 +66,7 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
 
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const bufferTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTelemetryUpdateRef = useRef<number>(0);
 
   // Centralized telemetry and console logger
   const addLog = useCallback(
@@ -232,12 +233,16 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
       const dropped = quality ? quality.droppedVideoFrames : 0;
       const total = quality ? quality.totalVideoFrames : 0;
 
-      setTelemetry((prev) => ({
-        ...prev,
-        bufferAhead: Number(ahead.toFixed(1)),
-        droppedFrames: dropped,
-        totalFrames: total,
-      }));
+      const now = Date.now();
+      if (now - lastTelemetryUpdateRef.current > 500) {
+        lastTelemetryUpdateRef.current = now;
+        setTelemetry((prev) => ({
+          ...prev,
+          bufferAhead: Number(ahead.toFixed(1)),
+          droppedFrames: dropped,
+          totalFrames: total,
+        }));
+      }
     }
   };
 
@@ -308,147 +313,137 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
         ));
 
     if (isHls) {
-      if (isMobile) {
-        // Mobile Delivery: Direct FastStart 720p MP4.
-        // Utilizes native Android OS C++ hardware media decoding (NuPlayer/Stagefright),
-        // bypassing JavaScript MediaSource chunking and zero B-frames (IPPP),
-        // completely eliminating bufferStalledError and dropping dropped frames to 0!
-        const mobileMp4Url = `${rawUrl.replace(/[^/]+\.m3u8$/, "mobile.mp4")}?v=v2_fluid`;
-        const devType = "Móvil (Hardware Directo MP4)";
-        const vp = typeof window !== "undefined" ? `${window.innerWidth}x${window.innerHeight}` : "";
+      const targetVariant = isMobile ? "720p.m3u8" : "1080p.m3u8";
+      const streamUrl = rawUrl.includes("/videos/hls/")
+        ? rawUrl.replace(/[^/]+\.m3u8$/, targetVariant)
+        : rawUrl;
+      const mobileMp4Fallback = `${rawUrl.replace(/[^/]+\.m3u8$/, "mobile.mp4")}?v=v2_fluid`;
 
-        setTelemetry((prev) => ({
-          ...prev,
-          streamUrl: mobileMp4Url,
-          streamVariant: "mobile.mp4",
-          deviceType: devType,
-          viewport: vp,
-          hlsState: "Hardware Nativo",
-        }));
+      const devType = isMobile
+        ? "Móvil (Adaptive HLS 720p Proactivo)"
+        : "Escritorio / PC (Master 1080p)";
+      const vp = typeof window !== "undefined" ? `${window.innerWidth}x${window.innerHeight}` : "";
 
-        addLog("DISPOSITIVO", `${devType} | Pantalla: ${vp}`, "info");
-        addLog("PROYECTO", `Cargando: "${project.title}"`, "info");
-        addLog("MODO_HARDWARE", `✔ Conectado a decodificador nativo (0 frames caídos): ${mobileMp4Url}`, "success");
+      setTelemetry((prev) => ({
+        ...prev,
+        streamUrl,
+        streamVariant: targetVariant,
+        deviceType: devType,
+        viewport: vp,
+        hlsState: "Iniciando...",
+      }));
 
-        video.src = mobileMp4Url;
+      addLog("DISPOSITIVO", `${devType} | Pantalla: ${vp}`, "info");
+      addLog("PROYECTO", `Cargando: "${project.title}"`, "info");
+      addLog("STREAM", `URL Seleccionada: ${streamUrl}`, "info");
+
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: false,
+          backBufferLength: 15,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          maxBufferSize: 30 * 1000 * 1000,
+          maxBufferHole: 0.8,
+          highBufferWatchdogPeriod: 2,
+          nudgeMaxRetry: 10,
+          nudgeOffset: 0.1,
+          startFragPrefetch: true,
+          appendErrorMaxRetry: 5,
+        });
+        hlsRef.current = hls;
+
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_LOADED, (_event, data) => {
+          addLog("MANIFEST", `Manifiesto cargado (${data.levels.length} calidad/es detectada/s)`, "success");
+        });
+
+        hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
+          const lvl = data.levels[0];
+          const res = lvl ? `${lvl.width}x${lvl.height}` : targetVariant;
+          setTelemetry((prev) => ({ ...prev, hlsState: "Listo para reproducir" }));
+          addLog("PARSER", `Flujo preparado: ${res} a ~${Math.round((lvl?.bitrate || 1100000) / 1000)} kbps`, "success");
+          attemptPlay();
+        });
+
+        hls.on(Hls.Events.FRAG_LOADING, (_event, data) => {
+          const fragName = data.frag.relurl || `frag_${data.frag.sn}`;
+          addLog("CARGA", `Descargando: ${fragName}...`, "info");
+        });
+
+        hls.on(Hls.Events.FRAG_LOADED, (_event, data) => {
+          const fragName = data.frag.relurl || `frag_${data.frag.sn}`;
+          const dur = data.frag.duration.toFixed(1);
+          const kb = (data.frag.stats.total / 1024).toFixed(0);
+          const loadMs = Math.max(1, Math.round(data.frag.stats.loading.end - data.frag.stats.loading.start));
+          const speedMbps = ((data.frag.stats.total * 8) / (loadMs / 1000) / 1000000).toFixed(2);
+
+          setTelemetry((prev) => ({
+            ...prev,
+            segmentsLoaded: prev.segmentsLoaded + 1,
+            bandwidthMbps: Number(speedMbps),
+          }));
+
+          addLog("SEGMENTO", `✔ ${fragName} listo (${dur}s, ${kb} KB en ${loadMs}ms @ ${speedMbps} Mbps)`, "success");
+        });
+
+        hls.on(Hls.Events.BUFFER_APPENDED, () => {
+          if (!video) return;
+          const cur = video.currentTime;
+          let ahead = 0;
+          for (let i = 0; i < video.buffered.length; i++) {
+            if (video.buffered.start(i) <= cur && cur <= video.buffered.end(i)) {
+              ahead = video.buffered.end(i) - cur;
+              break;
+            }
+          }
+          setTelemetry((prev) => ({ ...prev, bufferAhead: Number(ahead.toFixed(1)) }));
+        });
+
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          const isFatal = data.fatal;
+          addLog(
+            isFatal ? "ERROR_FATAL" : "HLS_AVISO",
+            `${data.type}: ${data.details}`,
+            isFatal ? "error" : "warn"
+          );
+          if (data.details === "bufferStalledError") {
+            if (video && !video.paused) {
+              video.currentTime = Math.min(video.duration || 9999, video.currentTime + 0.1);
+            }
+          }
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                addLog("RECUPERACIÓN", "Reintentando conexión de red...", "warn");
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                addLog("RECUPERACIÓN", "Recuperando decodificador de medios...", "warn");
+                hls.recoverMediaError();
+                break;
+              default:
+                addLog("FALLBACK", "Cambiando a MP4 nativo por error fatal HLS...", "warn");
+                hls.destroy();
+                video.src = mobileMp4Fallback;
+                video.load();
+                attemptPlay();
+                break;
+            }
+          }
+        });
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        // Native HLS for Safari iOS / macOS
+        addLog("NATIVE_HLS", `Cargando HLS nativo: ${streamUrl}`, "info");
+        video.src = streamUrl;
+      } else {
+        addLog("FALLBACK_MP4", `Cargando MP4 directo: ${mobileMp4Fallback}`, "info");
+        video.src = mobileMp4Fallback;
         video.load();
         attemptPlay();
-      } else {
-        // Desktop Delivery: Pristine 1080p Master HLS Stream
-        const targetVariant = "1080p.m3u8";
-        const streamUrl = rawUrl.includes("/videos/hls/")
-          ? rawUrl.replace(/[^/]+\.m3u8$/, targetVariant)
-          : rawUrl;
-
-        const devType = "Escritorio / PC (Master 1080p)";
-        const vp = typeof window !== "undefined" ? `${window.innerWidth}x${window.innerHeight}` : "";
-
-        setTelemetry((prev) => ({
-          ...prev,
-          streamUrl,
-          streamVariant: targetVariant,
-          deviceType: devType,
-          viewport: vp,
-          hlsState: "Iniciando...",
-        }));
-
-        addLog("DISPOSITIVO", `${devType} | Pantalla: ${vp}`, "info");
-        addLog("PROYECTO", `Cargando: "${project.title}"`, "info");
-        addLog("STREAM", `URL Seleccionada: ${streamUrl}`, "info");
-
-        if (Hls.isSupported()) {
-          const hls = new Hls({
-            enableWorker: true,
-            lowLatencyMode: false,
-            backBufferLength: 30,
-            maxBufferLength: 60,
-            maxMaxBufferLength: 120,
-            maxBufferSize: 60 * 1000 * 1000,
-            maxBufferHole: 0.5,
-            highBufferWatchdogPeriod: 2,
-            nudgeMaxRetry: 5,
-            nudgeOffset: 0.1,
-            startFragPrefetch: true,
-          });
-          hlsRef.current = hls;
-
-          hls.loadSource(streamUrl);
-          hls.attachMedia(video);
-
-          hls.on(Hls.Events.MANIFEST_LOADED, (_event, data) => {
-            addLog("MANIFEST", `Manifiesto cargado (${data.levels.length} calidad/es detectada/s)`, "success");
-          });
-
-          hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
-            const lvl = data.levels[0];
-            const res = lvl ? `${lvl.width}x${lvl.height}` : targetVariant;
-            setTelemetry((prev) => ({ ...prev, hlsState: "Listo para reproducir" }));
-            addLog("PARSER", `Flujo preparado: ${res} a ~${Math.round((lvl?.bitrate || 1200000) / 1000)} kbps`, "success");
-            attemptPlay();
-          });
-
-          hls.on(Hls.Events.FRAG_LOADING, (_event, data) => {
-            const fragName = data.frag.relurl || `frag_${data.frag.sn}`;
-            addLog("CARGA", `Descargando: ${fragName}...`, "info");
-          });
-
-          hls.on(Hls.Events.FRAG_LOADED, (_event, data) => {
-            const fragName = data.frag.relurl || `frag_${data.frag.sn}`;
-            const dur = data.frag.duration.toFixed(1);
-            const kb = (data.frag.stats.total / 1024).toFixed(0);
-            const loadMs = Math.max(1, Math.round(data.frag.stats.loading.end - data.frag.stats.loading.start));
-            const speedMbps = ((data.frag.stats.total * 8) / (loadMs / 1000) / 1000000).toFixed(2);
-
-            setTelemetry((prev) => ({
-              ...prev,
-              segmentsLoaded: prev.segmentsLoaded + 1,
-              bandwidthMbps: Number(speedMbps),
-            }));
-
-            addLog("SEGMENTO", `✔ ${fragName} listo (${dur}s, ${kb} KB en ${loadMs}ms @ ${speedMbps} Mbps)`, "success");
-          });
-
-          hls.on(Hls.Events.BUFFER_APPENDED, () => {
-            if (!video) return;
-            const cur = video.currentTime;
-            let ahead = 0;
-            for (let i = 0; i < video.buffered.length; i++) {
-              if (video.buffered.start(i) <= cur && cur <= video.buffered.end(i)) {
-                ahead = video.buffered.end(i) - cur;
-                break;
-              }
-            }
-            setTelemetry((prev) => ({ ...prev, bufferAhead: Number(ahead.toFixed(1)) }));
-          });
-
-          hls.on(Hls.Events.ERROR, (_event, data) => {
-            const isFatal = data.fatal;
-            addLog(
-              isFatal ? "ERROR_FATAL" : "HLS_AVISO",
-              `${data.type}: ${data.details}`,
-              isFatal ? "error" : "warn"
-            );
-            if (data.fatal) {
-              switch (data.type) {
-                case Hls.ErrorTypes.NETWORK_ERROR:
-                  addLog("RECUPERACIÓN", "Reintentando conexión de red...", "warn");
-                  hls.startLoad();
-                  break;
-                case Hls.ErrorTypes.MEDIA_ERROR:
-                  addLog("RECUPERACIÓN", "Recuperando decodificador de medios...", "warn");
-                  hls.recoverMediaError();
-                  break;
-                default:
-                  hls.destroy();
-                  break;
-              }
-            }
-          });
-        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          // Native HLS for Safari macOS
-          addLog("NATIVE_HLS", `Cargando HLS nativo en Safari: ${streamUrl}`, "info");
-          video.src = streamUrl;
-        }
       }
     } else {
       addLog("DIRECT_MP4", `Cargando MP4 directo: ${rawUrl}`, "info");
