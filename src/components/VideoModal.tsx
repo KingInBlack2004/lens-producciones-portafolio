@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { X, Calendar, User, Clock, Film, Play, VolumeX } from "lucide-react";
+import { X, Calendar, User, Clock, Film, Play, VolumeX, Activity, Copy, Check, Terminal } from "lucide-react";
 import Hls from "hls.js";
 import { Project } from "@/types/project";
 import { CustomControls } from "./CustomControls";
@@ -9,6 +9,28 @@ import { CustomControls } from "./CustomControls";
 interface VideoModalProps {
   project: Project | null;
   onClose: () => void;
+}
+
+interface TelemetryLog {
+  id: number;
+  time: string;
+  tag: string;
+  msg: string;
+  type: "info" | "success" | "warn" | "error";
+}
+
+interface TelemetryState {
+  streamUrl: string;
+  streamVariant: string;
+  deviceType: string;
+  viewport: string;
+  bufferAhead: number;
+  droppedFrames: number;
+  totalFrames: number;
+  segmentsLoaded: number;
+  bandwidthMbps: number;
+  hlsState: string;
+  logs: TelemetryLog[];
 }
 
 export function VideoModal({ project, onClose }: VideoModalProps) {
@@ -25,15 +47,96 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [showTelemetry, setShowTelemetry] = useState(false);
+  const [copiedLogs, setCopiedLogs] = useState(false);
+
+  const [telemetry, setTelemetry] = useState<TelemetryState>({
+    streamUrl: "",
+    streamVariant: "",
+    deviceType: "",
+    viewport: "",
+    bufferAhead: 0,
+    droppedFrames: 0,
+    totalFrames: 0,
+    segmentsLoaded: 0,
+    bandwidthMbps: 0,
+    hlsState: "Iniciando...",
+    logs: [],
+  });
+
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const bufferTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Centralized telemetry and console logger
+  const addLog = useCallback(
+    (
+      tag: string,
+      msg: string,
+      type: "info" | "success" | "warn" | "error" = "info"
+    ) => {
+      const now = new Date();
+      const time = now.toLocaleTimeString("es-ES", {
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      const ms = String(now.getMilliseconds()).padStart(3, "0");
+      const fullTime = `${time}.${ms}`;
+
+      // Styled browser console output for instant devtools inspection
+      const style =
+        type === "error"
+          ? "color: #f87171; font-weight: bold;"
+          : type === "warn"
+          ? "color: #fbbf24; font-weight: bold;"
+          : type === "success"
+          ? "color: #34d399; font-weight: bold;"
+          : "color: #38bdf8;";
+
+      console.log(`%c[LensPlayer ${fullTime}] [${tag}] ${msg}`, style);
+
+      setTelemetry((prev) => ({
+        ...prev,
+        logs: [
+          {
+            id: Date.now() + Math.random(),
+            time: fullTime,
+            tag,
+            msg,
+            type,
+          },
+          ...prev.logs.slice(0, 39),
+        ],
+      }));
+    },
+    []
+  );
+
+  const handleCopyLogs = useCallback(() => {
+    const text = telemetry.logs
+      .slice()
+      .reverse()
+      .map((l) => `[${l.time}] [${l.tag}] ${l.msg}`)
+      .join("\n");
+    const summary = `=== LENS PRODUCCIONES - TELEMETRÍA DE REPRODUCCIÓN ===\nVideo: ${project?.title}\nDispositivo: ${telemetry.deviceType} (${telemetry.viewport})\nFlujo Activo: ${telemetry.streamUrl}\nBúfer disponible: ${telemetry.bufferAhead}s adelante\nCuadros Caídos: ${telemetry.droppedFrames} / ${telemetry.totalFrames}\nSegmentos descargados: ${telemetry.segmentsLoaded}\n\n=== REGISTRO DETALLADO DE EVENTOS ===\n${text}`;
+    navigator.clipboard.writeText(summary).then(() => {
+      setCopiedLogs(true);
+      setTimeout(() => setCopiedLogs(false), 2000);
+    });
+  }, [telemetry, project]);
 
   const handleWaiting = useCallback(() => {
     if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current);
     bufferTimeoutRef.current = setTimeout(() => {
       setIsBuffering(true);
+      addLog(
+        "BÚFER",
+        `Esperando datos en ${(videoRef.current?.currentTime || 0).toFixed(1)}s`,
+        "warn"
+      );
     }, 200);
-  }, []);
+  }, [addLog]);
 
   const handlePlaying = useCallback(() => {
     if (bufferTimeoutRef.current) {
@@ -42,7 +145,12 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
     }
     setIsPlaying(true);
     setIsBuffering(false);
-  }, []);
+    addLog(
+      "REPRODUCCIÓN",
+      `▶️ Reproduciendo video de forma fluida en ${(videoRef.current?.currentTime || 0).toFixed(1)}s`,
+      "success"
+    );
+  }, [addLog]);
 
   // Auto-hide controls when user is inactive during playback
   const handleUserActivity = useCallback(() => {
@@ -100,13 +208,36 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
     };
   }, [project, handleClose]);
 
-  // Video time update listener
+  // Video time update listener & telemetry buffer health monitor
   const handleTimeUpdate = () => {
     if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
+      const cur = videoRef.current.currentTime;
+      setCurrentTime(cur);
       if (isBuffering && !videoRef.current.paused) {
         setIsBuffering(false);
       }
+
+      // Calculate buffer ahead in seconds
+      let ahead = 0;
+      const buf = videoRef.current.buffered;
+      for (let i = 0; i < buf.length; i++) {
+        if (buf.start(i) <= cur && cur <= buf.end(i)) {
+          ahead = buf.end(i) - cur;
+          break;
+        }
+      }
+
+      // Query dropped video frames from hardware decoder if supported
+      const quality = (videoRef.current as any).getVideoPlaybackQuality?.();
+      const dropped = quality ? quality.droppedVideoFrames : 0;
+      const total = quality ? quality.totalVideoFrames : 0;
+
+      setTelemetry((prev) => ({
+        ...prev,
+        bufferAhead: Number(ahead.toFixed(1)),
+        droppedFrames: dropped,
+        totalFrames: total,
+      }));
     }
   };
 
@@ -119,6 +250,7 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
           setIsPlaying(true);
           setIsBuffering(false);
           setAudioBlocked(false);
+          addLog("AUTOPLAY", "Autoplay exitoso con audio activado", "success");
         })
         .catch(() => {
           // Mobile autoplay policy blocked unmuted playback -> Fallback to muted playback
@@ -126,6 +258,7 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
             videoRef.current.muted = true;
             setIsMuted(true);
             setAudioBlocked(true);
+            addLog("AUTOPLAY", "Autoplay con audio bloqueado por el navegador -> Silenciando para reproducir", "warn");
             videoRef.current
               .play()
               .then(() => {
@@ -133,9 +266,9 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
                 setIsBuffering(false);
               })
               .catch(() => {
-                // Autoplay blocked completely by mobile OS battery saver / policy
                 setIsPlaying(false);
                 setIsBuffering(false);
+                addLog("AUTOPLAY", "Autoplay completamente bloqueado por ahorro de batería del SO", "warn");
               });
           } else {
             setIsPlaying(false);
@@ -143,16 +276,17 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
           }
         });
     }
-  }, []);
+  }, [addLog]);
 
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
       setDuration(videoRef.current.duration);
+      addLog("METADATOS", `Metadatos cargados: duración ${videoRef.current.duration.toFixed(1)}s`, "info");
       attemptPlay();
     }
   };
 
-  // Adaptive HLS (.m3u8) stream loader with intelligent device delivery & fallback
+  // Adaptive HLS (.m3u8) stream loader with intelligent device delivery, telemetry & fallback
   useEffect(() => {
     if (!project || !videoRef.current) return;
     const video = videoRef.current;
@@ -180,6 +314,22 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
         ? rawUrl.replace(/[^/]+\.m3u8$/, targetVariant)
         : rawUrl;
 
+      const devType = isMobile ? "Móvil (Optimizado 720p)" : "Escritorio (Master 1080p)";
+      const vp = typeof window !== "undefined" ? `${window.innerWidth}x${window.innerHeight}` : "";
+
+      setTelemetry((prev) => ({
+        ...prev,
+        streamUrl,
+        streamVariant: targetVariant,
+        deviceType: devType,
+        viewport: vp,
+        hlsState: "Iniciando...",
+      }));
+
+      addLog("DISPOSITIVO", `${devType} | Pantalla: ${vp}`, "info");
+      addLog("PROYECTO", `Cargando: "${project.title}"`, "info");
+      addLog("STREAM", `URL Seleccionada: ${streamUrl}`, "info");
+
       if (Hls.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
@@ -195,20 +345,71 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
           startFragPrefetch: true,
         });
         hlsRef.current = hls;
+
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
 
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        hls.on(Hls.Events.MANIFEST_LOADED, (_event, data) => {
+          addLog("MANIFEST", `Manifiesto cargado (${data.levels.length} calidad/es detectada/s)`, "success");
+        });
+
+        hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
+          const lvl = data.levels[0];
+          const res = lvl ? `${lvl.width}x${lvl.height}` : targetVariant;
+          setTelemetry((prev) => ({ ...prev, hlsState: "Listo para reproducir" }));
+          addLog("PARSER", `Flujo preparado: ${res} a ~${Math.round((lvl?.bitrate || 1200000) / 1000)} kbps`, "success");
           attemptPlay();
         });
 
+        hls.on(Hls.Events.FRAG_LOADING, (_event, data) => {
+          const fragName = data.frag.relurl || `frag_${data.frag.sn}`;
+          addLog("CARGA", `Descargando: ${fragName}...`, "info");
+        });
+
+        hls.on(Hls.Events.FRAG_LOADED, (_event, data) => {
+          const fragName = data.frag.relurl || `frag_${data.frag.sn}`;
+          const dur = data.frag.duration.toFixed(1);
+          const kb = (data.frag.stats.total / 1024).toFixed(0);
+          const loadMs = Math.max(1, Math.round(data.frag.stats.loading.end - data.frag.stats.loading.start));
+          const speedMbps = ((data.frag.stats.total * 8) / (loadMs / 1000) / 1000000).toFixed(2);
+
+          setTelemetry((prev) => ({
+            ...prev,
+            segmentsLoaded: prev.segmentsLoaded + 1,
+            bandwidthMbps: Number(speedMbps),
+          }));
+
+          addLog("SEGMENTO", `✔ ${fragName} listo (${dur}s, ${kb} KB en ${loadMs}ms @ ${speedMbps} Mbps)`, "success");
+        });
+
+        hls.on(Hls.Events.BUFFER_APPENDED, () => {
+          if (!video) return;
+          const cur = video.currentTime;
+          let ahead = 0;
+          for (let i = 0; i < video.buffered.length; i++) {
+            if (video.buffered.start(i) <= cur && cur <= video.buffered.end(i)) {
+              ahead = video.buffered.end(i) - cur;
+              break;
+            }
+          }
+          setTelemetry((prev) => ({ ...prev, bufferAhead: Number(ahead.toFixed(1)) }));
+        });
+
         hls.on(Hls.Events.ERROR, (_event, data) => {
+          const isFatal = data.fatal;
+          addLog(
+            isFatal ? "ERROR_FATAL" : "HLS_AVISO",
+            `${data.type}: ${data.details}`,
+            isFatal ? "error" : "warn"
+          );
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
+                addLog("RECUPERACIÓN", "Reintentando conexión de red...", "warn");
                 hls.startLoad();
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
+                addLog("RECUPERACIÓN", "Recuperando decodificador de medios...", "warn");
                 hls.recoverMediaError();
                 break;
               default:
@@ -219,9 +420,11 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
         });
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         // Native HLS for Safari iOS & macOS
+        addLog("NATIVE_HLS", `Cargando HLS nativo en Safari: ${streamUrl}`, "info");
         video.src = streamUrl;
       }
     } else {
+      addLog("DIRECT_MP4", `Cargando MP4 directo: ${rawUrl}`, "info");
       video.src = rawUrl;
     }
 
@@ -231,7 +434,7 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
         hlsRef.current = null;
       }
     };
-  }, [project, attemptPlay]);
+  }, [project, attemptPlay, addLog]);
 
   const togglePlayPause = () => {
     if (!videoRef.current) return;
@@ -328,25 +531,51 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
       >
         {/* Header Bar */}
         <div
-          className={`flex items-center justify-between px-6 py-4 border-b border-white/10 bg-neutral-900/60 backdrop-blur-md z-30 transition-opacity duration-500 ${
-            showControls || !isPlaying ? "opacity-100" : "opacity-40 hover:opacity-100"
+          className={`flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-white/10 bg-neutral-900/60 backdrop-blur-md z-30 transition-opacity duration-500 ${
+            showControls || !isPlaying || showTelemetry ? "opacity-100" : "opacity-40 hover:opacity-100"
           }`}
         >
-          <div className="flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
-            <span className="text-xs font-mono tracking-widest uppercase text-neutral-400">
+          <div className="flex items-center gap-2.5 sm:gap-3 overflow-hidden">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
+            <span className="text-xs font-mono tracking-widest uppercase text-neutral-400 truncate">
               {project.category} // {project.metadata?.client || "Lens Producciones"}
             </span>
           </div>
 
-          {/* Close Button */}
-          <button
-            onClick={handleClose}
-            aria-label="Cerrar reproductor"
-            className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-neutral-300 hover:text-white transition-all transform hover:rotate-90 focus:outline-none focus:ring-1 focus:ring-amber-400"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            {/* Live Telemetry / Logs Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowTelemetry((v) => !v);
+              }}
+              title="Ver telemetría técnica y registro de logs en tiempo real"
+              aria-label="Alternar telemetría y logs"
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono transition-all border cursor-pointer ${
+                showTelemetry
+                  ? "bg-amber-400 text-black border-amber-300 font-semibold shadow-md shadow-amber-400/20"
+                  : "bg-white/5 hover:bg-white/10 text-neutral-300 border-white/15"
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">LOGS & STATS</span>
+              <span className="xs:hidden">LOGS</span>
+              {telemetry.bufferAhead > 0 && (
+                <span className="hidden sm:inline text-[10px] opacity-75 font-normal">
+                  ({telemetry.bufferAhead}s)
+                </span>
+              )}
+            </button>
+
+            {/* Close Button */}
+            <button
+              onClick={handleClose}
+              aria-label="Cerrar reproductor"
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-neutral-300 hover:text-white transition-all transform hover:rotate-90 focus:outline-none focus:ring-1 focus:ring-amber-400 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Body: Video on Top + Ficha descriptiva abajo */}
@@ -421,6 +650,107 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
                 <VolumeX className="w-4 h-4 text-amber-400" />
                 <span>Toca para activar audio</span>
               </button>
+            )}
+
+            {/* Live Telemetry & Diagnostics Overlay */}
+            {showTelemetry && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute top-3 left-3 right-3 sm:right-auto sm:w-[420px] max-h-[85%] z-40 flex flex-col bg-neutral-950/95 backdrop-blur-2xl border border-white/20 rounded-xl p-3 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.9)] text-xs font-mono text-neutral-200 select-text animate-fade-in"
+              >
+                {/* HUD Header */}
+                <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                    <span className="font-bold text-amber-400 tracking-wider">TELEMETRÍA EN VIVO</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={handleCopyLogs}
+                      title="Copiar logs al portapapeles"
+                      className="flex items-center gap-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-[10px] text-neutral-300 transition-colors cursor-pointer"
+                    >
+                      {copiedLogs ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedLogs ? "¡Copiado!" : "Copiar Logs"}</span>
+                    </button>
+                    <button
+                      onClick={() => setShowTelemetry(false)}
+                      className="p-1 rounded hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                      aria-label="Cerrar telemetría"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Metrics Cards Grid */}
+                <div className="grid grid-cols-2 gap-2 mb-2.5">
+                  <div className="bg-white/5 rounded-lg p-2 border border-white/5">
+                    <span className="block text-[10px] text-neutral-400 uppercase tracking-wider">Flujo Activo</span>
+                    <span className="font-semibold text-amber-300 truncate block mt-0.5">{telemetry.streamVariant || "Auto"}</span>
+                    <span className="text-[9px] text-neutral-500 block truncate">{telemetry.streamUrl.replace("/videos/hls/", "")}</span>
+                  </div>
+
+                  <div className="bg-white/5 rounded-lg p-2 border border-white/5">
+                    <span className="block text-[10px] text-neutral-400 uppercase tracking-wider">Dispositivo</span>
+                    <span className="font-semibold text-neutral-200 truncate block mt-0.5">{telemetry.deviceType || "N/A"}</span>
+                    <span className="text-[9px] text-neutral-500 block">{telemetry.viewport}</span>
+                  </div>
+
+                  <div className="bg-white/5 rounded-lg p-2 border border-white/5">
+                    <span className="block text-[10px] text-neutral-400 uppercase tracking-wider">Búfer Precargado</span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className={`font-semibold ${telemetry.bufferAhead >= 4 ? "text-emerald-400" : telemetry.bufferAhead >= 1 ? "text-amber-400" : "text-rose-400"}`}>
+                        {telemetry.bufferAhead}s adelante
+                      </span>
+                    </div>
+                    <span className="text-[9px] text-neutral-500 block">{isPlaying ? "En reproducción" : "Pausado"}</span>
+                  </div>
+
+                  <div className="bg-white/5 rounded-lg p-2 border border-white/5">
+                    <span className="block text-[10px] text-neutral-400 uppercase tracking-wider">Segmentos & Pérdida</span>
+                    <span className={`font-semibold block mt-0.5 ${telemetry.droppedFrames === 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                      {telemetry.droppedFrames} cuadros caídos
+                    </span>
+                    <span className="text-[9px] text-neutral-500 block">{telemetry.segmentsLoaded} segs descargados</span>
+                  </div>
+                </div>
+
+                {/* Log Stream Terminal */}
+                <div className="flex items-center justify-between text-[10px] text-neutral-400 mb-1 px-0.5">
+                  <span className="flex items-center gap-1 font-semibold text-neutral-300">
+                    <Terminal className="w-3 h-3 text-amber-400" />
+                    Consola de Eventos ({telemetry.logs.length})
+                  </span>
+                  <span>{telemetry.bandwidthMbps > 0 ? `${telemetry.bandwidthMbps} Mbps red` : ""}</span>
+                </div>
+
+                <div className="flex-1 overflow-y-auto max-h-48 bg-black/70 rounded-lg p-2 border border-white/10 space-y-1 font-mono text-[10.5px]">
+                  {telemetry.logs.length === 0 ? (
+                    <div className="text-neutral-500 text-center py-4">Esperando eventos de reproducción...</div>
+                  ) : (
+                    telemetry.logs.map((log) => (
+                      <div key={log.id} className="leading-tight break-words py-0.5 border-b border-white/5 last:border-none">
+                        <span className="text-neutral-500 mr-1.5 text-[9.5px]">{log.time}</span>
+                        <span
+                          className={`font-semibold mr-1.5 px-1 py-0.5 rounded text-[9px] ${
+                            log.type === "error"
+                              ? "bg-rose-500/20 text-rose-400"
+                              : log.type === "warn"
+                              ? "bg-amber-500/20 text-amber-400"
+                              : log.type === "success"
+                              ? "bg-emerald-500/20 text-emerald-400"
+                              : "bg-sky-500/20 text-sky-400"
+                          }`}
+                        >
+                          {log.tag}
+                        </span>
+                        <span className="text-neutral-300">{log.msg}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             )}
 
             {/* Big Center Play Button when paused */}
