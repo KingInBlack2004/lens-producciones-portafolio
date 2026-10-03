@@ -1,5 +1,20 @@
 [
   {
+    "id": "es-no-amar",
+    "title": "ES NO AMAR // Live Performance & Visual",
+    "category": "Evento",
+    "description": "Registro audiovisual en directo y pieza musical de 'Es No Amar'. Grabado con iluminación escénica nocturna, interacción con el público y dinámica de cámara en mano de alta energía.",
+    "videoUrl": "/videos/VID_20260725_121258_440.mp4",
+    "thumbnailUrl": "/thumbnails/es-no-amar.webp",
+    "featured": true,
+    "metadata": {
+      "year": "2026",
+      "client": "Es No Amar // Live Concert",
+      "role": "Director & DP",
+      "duration": "01:00"
+    }
+  },
+  {
     "id": "audi-gt-velocity",
     "title": "Audi RS e-tron GT // Velocity",
     "category": "Automotriz",

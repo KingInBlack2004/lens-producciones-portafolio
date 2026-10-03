@@ -166,8 +166,8 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
 
         {/* Scrollable Body: Video on Top + Ficha descriptiva abajo */}
         <div className="overflow-y-auto flex-grow flex flex-col">
-          {/* Main Video Player Frame */}
-          <div className="relative w-full aspect-video bg-black flex items-center justify-center group/player">
+          {/* Main Video Player Frame (adapts to 16:9 landscape and 9:16 vertical) */}
+          <div className="relative w-full h-[55vh] sm:h-[68vh] md:h-[75vh] max-h-[750px] bg-black flex items-center justify-center group/player overflow-hidden">
             <video
               ref={videoRef}
               playsInline
