@@ -626,12 +626,20 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
               playsInline
               disablePictureInPicture
               disableRemotePlayback
-              preload="metadata"
+              preload="auto"
               poster={project.thumbnailUrl}
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
               onWaiting={handleWaiting}
               onPlaying={handlePlaying}
+              onError={() => {
+                const err = videoRef.current?.error;
+                addLog(
+                  "ERROR_VIDEO",
+                  `Error en reproducción nativa: ${err?.message || "Código " + err?.code}`,
+                  "error"
+                );
+              }}
               onPause={() => {
                 if (bufferTimeoutRef.current) {
                   clearTimeout(bufferTimeoutRef.current);
