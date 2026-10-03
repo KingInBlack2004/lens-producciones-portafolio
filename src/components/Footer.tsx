@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Film, Instagram, Mail, MapPin, Phone, Youtube } from "lucide-react";
+import { Film, Instagram, Mail, MapPin, Phone } from "lucide-react";
 
 export function Footer() {
   return (
