@@ -15,7 +15,7 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isBuffering, setIsBuffering] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -81,7 +81,6 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
 
   const attemptPlay = useCallback(() => {
     if (!videoRef.current) return;
-    setIsBuffering(true);
     const playPromise = videoRef.current.play();
     if (playPromise !== undefined) {
       playPromise
@@ -103,9 +102,13 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
                 setIsBuffering(false);
               })
               .catch(() => {
+                // Autoplay blocked completely by mobile OS battery saver / policy
                 setIsPlaying(false);
                 setIsBuffering(false);
               });
+          } else {
+            setIsPlaying(false);
+            setIsBuffering(false);
           }
         });
     }
@@ -252,6 +255,7 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
           >
             <video
               ref={videoRef}
+              src={project.videoUrl}
               playsInline
               disablePictureInPicture
               disableRemotePlayback
@@ -259,16 +263,25 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
               poster={project.thumbnailUrl}
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
-              onWaiting={() => setIsBuffering(true)}
-              onPlaying={() => setIsBuffering(false)}
+              onWaiting={() => {
+                if (isPlaying) setIsBuffering(true);
+              }}
+              onPlaying={() => {
+                setIsPlaying(true);
+                setIsBuffering(false);
+              }}
+              onPause={() => {
+                setIsPlaying(false);
+                setIsBuffering(false);
+              }}
               onCanPlay={() => setIsBuffering(false)}
-              onSeeking={() => setIsBuffering(true)}
+              onSeeking={() => {
+                if (isPlaying) setIsBuffering(true);
+              }}
               onSeeked={() => setIsBuffering(false)}
               onClick={togglePlayPause}
               className="w-full h-full object-contain cursor-pointer"
-            >
-              <source src={project.videoUrl} type="video/mp4" />
-            </video>
+            />
 
             {/* Audio Blocked Toast for Mobile Autoplay */}
             {audioBlocked && isPlaying && (
@@ -288,8 +301,8 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
               </button>
             )}
 
-            {/* Big Center Play Button when paused and not buffering */}
-            {!isPlaying && !isBuffering && (
+            {/* Big Center Play Button when paused */}
+            {!isPlaying && (
               <button
                 onClick={togglePlayPause}
                 aria-label="Reproducir video"
@@ -301,8 +314,8 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
               </button>
             )}
 
-            {/* Buffering Spinner */}
-            {isBuffering && (
+            {/* Buffering Spinner: only show while actively playing and waiting for data */}
+            {isPlaying && isBuffering && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-[1px] pointer-events-none">
                 <div className="w-12 h-12 rounded-full border-2 border-white/20 border-t-amber-400 animate-spin" />
               </div>
