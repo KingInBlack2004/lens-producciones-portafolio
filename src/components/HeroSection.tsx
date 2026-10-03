@@ -34,10 +34,10 @@ export function HeroSection({ onExploreClick }: HeroSectionProps) {
         loop
         playsInline
         preload="auto"
-        poster="/thumbnails/hero-poster.webp"
+        poster="/thumbnails/empiccc-flow-fest.webp"
         className="absolute inset-0 w-full h-full object-cover object-center scale-[1.03] transition-transform duration-1000"
       >
-        <source src="/videos/hero-reel.mp4" type="video/mp4" />
+        <source src="/videos/empiccc-flow-fest.mp4" type="video/mp4" />
       </video>
 
       {/* Cinematic Overlays */}
