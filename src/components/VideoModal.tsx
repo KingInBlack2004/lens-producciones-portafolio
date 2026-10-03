@@ -131,12 +131,12 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
     }
   };
 
-  // Adaptive HLS (.m3u8) stream loader with seamless fallback
+  // Adaptive HLS (.m3u8) stream loader with intelligent device delivery & fallback
   useEffect(() => {
     if (!project || !videoRef.current) return;
     const video = videoRef.current;
-    const url = project.videoUrl;
-    const isHls = url.endsWith(".m3u8");
+    const rawUrl = project.videoUrl;
+    const isHls = rawUrl.endsWith(".m3u8");
 
     // Clean up previous instance
     if (hlsRef.current) {
@@ -145,6 +145,20 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
     }
 
     if (isHls) {
+      // Intelligent device delivery:
+      // Mobile devices receive hardware-friendly 720p fMP4 stream (prevents decoder stalls on Helio/Exynos/Snapdragon mid-range chips).
+      // Desktops receive full pristine 1080p master quality.
+      const isMobile =
+        typeof window !== "undefined" &&
+        (window.innerWidth < 768 ||
+          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+            navigator.userAgent
+          ));
+      const targetVariant = isMobile ? "720p.m3u8" : "1080p.m3u8";
+      const streamUrl = rawUrl.includes("/videos/hls/")
+        ? rawUrl.replace(/[^/]+\.m3u8$/, targetVariant)
+        : rawUrl;
+
       if (Hls.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
@@ -158,7 +172,7 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
           nudgeOffset: 0.1,
         });
         hlsRef.current = hls;
-        hls.loadSource(url);
+        hls.loadSource(streamUrl);
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -182,10 +196,10 @@ export function VideoModal({ project, onClose }: VideoModalProps) {
         });
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         // Native HLS for Safari iOS & macOS
-        video.src = url;
+        video.src = streamUrl;
       }
     } else {
-      video.src = url;
+      video.src = rawUrl;
     }
 
     return () => {
