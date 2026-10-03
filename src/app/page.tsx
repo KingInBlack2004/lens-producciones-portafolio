@@ -30,7 +30,7 @@ export default function Home() {
       {/* Main Content */}
       <main className="flex-grow">
         {/* Fullscreen Hero Section */}
-        <HeroSection />
+        <HeroSection isPaused={!!selectedProject} />
 
         {/* Portfolio Gallery Section */}
         <PortfolioGrid

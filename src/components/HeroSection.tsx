@@ -5,24 +5,52 @@ import { ChevronDown, Play, VolumeX } from "lucide-react";
 
 interface HeroSectionProps {
   onExploreClick?: () => void;
+  isPaused?: boolean;
 }
 
-export function HeroSection({ onExploreClick }: HeroSectionProps) {
+export function HeroSection({ onExploreClick, isPaused = false }: HeroSectionProps) {
+  const sectionRef = useRef<HTMLElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.muted = true;
-      videoRef.current.defaultMuted = true;
-      // Force play promise handling to avoid blocking mobile browser thread
+    if (!videoRef.current) return;
+
+    if (isPaused) {
+      videoRef.current.pause();
+    } else {
       const playPromise = videoRef.current.play();
       if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          // Autoplay was prevented by mobile battery saver / low power mode
-        });
+        playPromise.catch(() => {});
       }
     }
-  }, []);
+  }, [isPaused]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const section = sectionRef.current;
+    if (!video || !section) return;
+
+    video.muted = true;
+    video.defaultMuted = true;
+
+    // Pause video when scrolled out of view to free hardware decoder & GPU for portfolio videos
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isPaused) {
+          video.play().catch(() => {});
+        } else {
+          video.pause();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(section);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isPaused]);
 
   const handleVideoEnded = () => {
     if (videoRef.current) {
@@ -44,6 +72,7 @@ export function HeroSection({ onExploreClick }: HeroSectionProps) {
 
   return (
     <section
+      ref={sectionRef}
       id="hero"
       className="relative w-full h-screen min-h-[640px] flex items-center justify-center overflow-hidden bg-black"
     >
